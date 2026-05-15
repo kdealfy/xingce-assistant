@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>行测助手</title>
+	<link rel="stylesheet" href="style.css?v=20260512-4">
+</head>
+
+<body>
+	<main class="app-shell">
+		<section class="assistant-card" aria-label="行测助手">
+			<nav class="train-nav" aria-label="训练类型">
+				<div class="menu">
+					<button class="menu-trigger active" type="button" data-menu="basic" aria-expanded="false">基础练习 <span>⌄</span></button>
+					<div class="menu-panel" data-panel="basic"></div>
+				</div>
+				<div class="menu">
+					<button class="menu-trigger" type="button" data-menu="data" aria-expanded="false">资料专项 <span>⌄</span></button>
+					<div class="menu-panel" data-panel="data"></div>
+				</div>
+				<button class="menu-trigger record-page-trigger" type="button" id="recordPageBtn">做题记录</button>
+			</nav>
+
+			<section class="workspace">
+				<div class="toolbar" id="exerciseToolbar">
+					<div>
+						<h1 id="exerciseTitle">两位数加法</h1>
+						<p id="exerciseDesc">限时心算训练，提交后显示正确答案与用时。</p>
+					</div>
+					<div class="actions">
+						<button class="ghost-button" type="button" id="scoreBtn" hidden>成绩</button>
+						<button class="start-button" type="button" id="startBtn">开始练习</button>
+					</div>
+				</div>
+
+				<div class="meta-row" id="metaRow" hidden>
+					<span id="timer">00:00</span>
+					<span id="progress">0 / 0</span>
+					<span id="statusText">未开始</span>
+				</div>
+
+				<form id="quizForm" class="question-list" autocomplete="off"></form>
+
+				<div class="submit-bar" id="submitBar" hidden>
+					<span id="submitHint">填写完成后点击校验。</span>
+					<strong class="inline-result" id="inlineResult" hidden></strong>
+					<button class="submit-button" type="button" id="submitBtn" onclick="submitAnswers()">提交并校验</button>
+				</div>
+
+				<section class="score-panel" id="scorePanel" hidden>
+					<div class="score-summary">
+						<strong id="scoreSummary">尚未提交</strong>
+						<span id="scoreDetail"></span>
+					</div>
+					<div id="answerList" class="answer-list"></div>
+				</section>
+
+				<section class="record-panel" id="recordPanel" hidden>
+					<div class="record-header">
+						<h2>做题记录 <span id="recordCountText"></span></h2>
+						<div class="record-tools">
+							<select class="record-filter" id="recordTypeFilter" aria-label="筛选题目类型">
+								<option value="">全部题型</option>
+							</select>
+							<button class="ghost-button" type="button" id="exportRecordBtn">导出表格</button>
+							<button class="ghost-button" type="button" id="clearRecordBtn">清空记录</button>
+						</div>
+					</div>
+					<div id="recordList" class="record-list"></div>
+				</section>
+			</section>
+		</section>
+	</main>
+
+	<div class="confirm-mask" id="confirmMask" hidden>
+		<section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+			<h2 id="confirmTitle">提交并校验？</h2>
+			<p id="confirmMessage">提交后会立即显示正确答案和本次成绩。</p>
+			<div class="confirm-actions">
+				<button class="ghost-button" type="button" id="confirmCancel">继续做题</button>
+				<button class="submit-button" type="button" id="confirmOk">停止并校验</button>
+			</div>
+		</section>
+	</div>
+
+	<script src="app.js?v=20260514-3"></script>
+</body>
+
+</html>
