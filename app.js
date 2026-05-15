@@ -868,7 +868,7 @@ function division(aMin, aMax, bMin, bMax) {
 }
 
 function multiSum() {
-	const nums = Array.from({ length: rand(4, 6) }, () => rand(12, 98));
+	const nums = Array.from({ length: 4 }, () => rand(12, 98));
 	return {
 		prompt: `${nums.join(" + ")} =`,
 		answer: nums.reduce((sum, item) => sum + item, 0),
