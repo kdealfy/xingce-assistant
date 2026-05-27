@@ -96,6 +96,11 @@ function bindEvents() {
 		if (!event.target.closest(".menu")) closeMenus();
 	});
 	document.addEventListener("keydown", (event) => {
+		if (event.key === "F12") {
+			event.preventDefault();
+			restartCurrentExercise();
+			return;
+		}
 		if (event.key !== " ") return;
 		if (isEditableTarget(event.target)) return;
 		if (canStartNewExercise()) {
@@ -272,6 +277,12 @@ function canStartNewExercise() {
 
 function isEditableTarget(target) {
 	return target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+}
+
+function restartCurrentExercise() {
+	if (elements.confirmMask) elements.confirmMask.hidden = true;
+	showExercisePage();
+	startExercise();
 }
 
 function getExerciseDescription(item) {
@@ -687,18 +698,14 @@ function exportHistoryCsv() {
 	const visibleHistory = getVisibleHistory();
 	if (!visibleHistory.length) return;
 	const maxQuestionCount = Math.max(0, ...visibleHistory.map((item) => item.questions?.length || 0));
-	const questionHeaders = Array.from({ length: maxQuestionCount }, (_, index) => `第${index + 1}题`);
-	const rows = [
-		["序号", "题目类型", "做题时间", "用时", "做题情况", ...questionHeaders],
-		...visibleHistory.map((item, index) => [
-			String(visibleHistory.length - index),
-			item.title,
-			formatDateTime(item.time),
-			formatTime(item.elapsed),
-			formatRecordStatus(item),
-			...formatQuestionColumns(item.questions, maxQuestionCount)
-		])
-	];
+	const rows = visibleHistory.map((item) => [
+		item.title,
+		formatDateTime(item.time),
+		formatTime(item.elapsed),
+		formatRecordStatus(item),
+		formatRecordGrade(item),
+		...formatQuestionColumns(item.questions, maxQuestionCount)
+	]);
 	const csv = `\uFEFF${rows.map((row) => row.map(escapeCsvCell).join(",")).join("\r\n")}`;
 	const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
 	const url = URL.createObjectURL(blob);
@@ -730,8 +737,11 @@ function formatQuestionColumns(questions = [], maxQuestionCount = 0) {
 }
 
 function formatRecordStatus(item) {
-	const grade = item.grade ? `，${item.grade}` : "";
-	return `${item.correct} / ${item.total}，正确率 ${item.accuracy}%${grade}`;
+	return `${item.correct} / ${item.total}，正确率 ${item.accuracy}%`;
+}
+
+function formatRecordGrade(item) {
+	return (item.grade || "").replace(/^评级：/, "").replace("未达标（需全对）", "未达标");
 }
 
 function escapeCsvCell(value) {
