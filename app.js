@@ -72,6 +72,7 @@ const elements = {
 	answerList: document.getElementById("answerList"),
 	recordPanel: document.getElementById("recordPanel"),
 	recordCountText: document.getElementById("recordCountText"),
+	recordTotalTimeText: document.getElementById("recordTotalTimeText"),
 	recordList: document.getElementById("recordList"),
 	recordTypeFilter: document.getElementById("recordTypeFilter"),
 	exportRecordBtn: document.getElementById("exportRecordBtn"),
@@ -646,6 +647,7 @@ function buildQuestionReport(answers) {
 function renderHistory() {
 	const visibleHistory = getVisibleHistory();
 	elements.recordCountText.textContent = `（${visibleHistory.length} 次）`;
+	elements.recordTotalTimeText.textContent = `总用时 ${formatTime(getTotalRecordSeconds(visibleHistory))}`;
 	elements.recordList.innerHTML = "";
 	if (!visibleHistory.length) {
 		elements.recordList.innerHTML = '<div class="empty-record">暂无做题记录。</div>';
@@ -686,6 +688,10 @@ function renderHistory() {
 			deleteHistoryRecord(recordId);
 		});
 	});
+}
+
+function getTotalRecordSeconds(history) {
+	return history.reduce((total, item) => total + Number(item.elapsed || 0), 0);
 }
 
 function getVisibleHistory() {
