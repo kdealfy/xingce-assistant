@@ -5,7 +5,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>行测助手</title>
-	<link rel="stylesheet" href="style.css?v=20260512-4">
+	<link rel="stylesheet" href="style.css?v=20260615-1">
 </head>
 
 <body>
@@ -20,6 +20,7 @@
 					<button class="menu-trigger" type="button" data-menu="data" aria-expanded="false">资料专项 <span>⌄</span></button>
 					<div class="menu-panel" data-panel="data"></div>
 				</div>
+				<button class="menu-trigger game-page-trigger" type="button" id="gamePageBtn">闯关模式</button>
 				<button class="menu-trigger record-page-trigger" type="button" id="recordPageBtn">做题记录</button>
 			</nav>
 
@@ -50,11 +51,45 @@
 				</div>
 
 				<section class="score-panel" id="scorePanel" hidden>
+					<div class="game-result" id="gameResult" hidden>
+						<div>
+							<strong id="gameResultTitle"></strong>
+							<p id="gameResultText"></p>
+						</div>
+						<div class="game-result-actions">
+							<button class="start-button" type="button" id="gameResultPrimaryBtn"></button>
+							<button class="ghost-button" type="button" id="gameMapBtn">返回关卡</button>
+						</div>
+					</div>
 					<div class="score-summary">
 						<strong id="scoreSummary">尚未提交</strong>
 						<span id="scoreDetail"></span>
 					</div>
 					<div id="answerList" class="answer-list"></div>
+				</section>
+
+				<section class="game-panel" id="gamePanel" hidden>
+					<div class="game-header">
+						<div>
+							<h1>闯关模式</h1>
+							<p>从基础口算开始，严格按照原练习的题量和评级标准通关；基础题必须全对且达到合格用时，资料专项全对即可。</p>
+						</div>
+						<button class="ghost-button" type="button" id="resetGameBtn">重置进度</button>
+					</div>
+					<div class="game-progress">
+						<div>
+							<span>关卡进度</span>
+							<strong id="gameProgressText">0 / 26</strong>
+						</div>
+						<div>
+							<span>累计星级</span>
+							<strong id="gameStarText">0 / 78</strong>
+						</div>
+						<div class="game-progress-track" aria-hidden="true">
+							<span id="gameProgressBar"></span>
+						</div>
+					</div>
+					<div class="game-stage-list" id="gameStageList"></div>
 				</section>
 
 				<section class="record-panel" id="recordPanel" hidden>
@@ -88,7 +123,7 @@
 		</section>
 	</div>
 
-	<script src="app.js?v=20260604-1"></script>
+	<script src="app.js?v=20260615-1"></script>
 </body>
 
 </html>

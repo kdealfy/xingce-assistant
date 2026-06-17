@@ -30,8 +30,42 @@ const exerciseGroups = {
 	]
 };
 
+const GAME_PROGRESS_KEY = "xingceAssistantGameProgress";
+const GAME_PROGRESS_VERSION = 3;
+
+const gameStages = [
+	{ id: "stage-1", number: 1, title: "口算营地", exerciseId: "addsub2", difficulty: "入门" },
+	{ id: "stage-2", number: 2, title: "加法哨站", exerciseId: "add3", difficulty: "入门" },
+	{ id: "stage-3", number: 3, title: "减法山路", exerciseId: "sub3", difficulty: "基础" },
+	{ id: "stage-4", number: 4, title: "三位混合坡", exerciseId: "addsub3", difficulty: "基础" },
+	{ id: "stage-5", number: 5, title: "混合运算场", exerciseId: "mixedAddSub", difficulty: "基础" },
+	{ id: "stage-6", number: 6, title: "连算峡谷", exerciseId: "sumMany", difficulty: "基础" },
+	{ id: "stage-7", number: 7, title: "乘法工坊", exerciseId: "mul21", difficulty: "进阶" },
+	{ id: "stage-8", number: 8, title: "十一捷径", exerciseId: "mul11", difficulty: "进阶" },
+	{ id: "stage-9", number: 9, title: "十五驿站", exerciseId: "mul15", difficulty: "进阶" },
+	{ id: "stage-10", number: 10, title: "三位乘法塔", exerciseId: "mul31", difficulty: "进阶" },
+	{ id: "stage-11", number: 11, title: "双位乘法阵", exerciseId: "mul22", difficulty: "挑战" },
+	{ id: "stage-12", number: 12, title: "除法关隘", exerciseId: "div31", difficulty: "挑战" },
+	{ id: "stage-13", number: 13, title: "双位除法门", exerciseId: "div32", difficulty: "挑战" },
+	{ id: "stage-14", number: 14, title: "乘法估算台", exerciseId: "mulEstimate", difficulty: "挑战" },
+	{ id: "stage-15", number: 15, title: "五位除法城", exerciseId: "div53", difficulty: "挑战" },
+	{ id: "stage-16", number: 16, title: "小数估算桥", exerciseId: "div34", difficulty: "挑战" },
+	{ id: "stage-17", number: 17, title: "百化分入口", exerciseId: "percent", difficulty: "资料" },
+	{ id: "stage-18", number: 18, title: "基期侦察", exerciseId: "base", difficulty: "资料" },
+	{ id: "stage-19", number: 19, title: "增量前线", exerciseId: "growth", difficulty: "资料" },
+	{ id: "stage-20", number: 20, title: "增量比较站", exerciseId: "growthCompare", difficulty: "资料" },
+	{ id: "stage-21", number: 21, title: "基期比较所", exerciseId: "baseCompare", difficulty: "资料" },
+	{ id: "stage-22", number: 22, title: "小分数堡垒", exerciseId: "fractionUnder", difficulty: "资料" },
+	{ id: "stage-23", number: 23, title: "大分数堡垒", exerciseId: "fractionOver", difficulty: "资料" },
+	{ id: "stage-24", number: 24, title: "分数竞技场", exerciseId: "fractionCompare", difficulty: "资料" },
+	{ id: "stage-25", number: 25, title: "比重指挥部", exerciseId: "baseShare", difficulty: "资料" },
+	{ id: "stage-26", number: 26, title: "综合试炼", count: 10, passAccuracy: 100, passSeconds: 90, goodSeconds: 75, excellentSeconds: 60, difficulty: "终局", generator: gameMixedQuestion }
+];
+
 const state = {
 	current: exerciseGroups.basic[0],
+	mode: "practice",
+	gameStageId: null,
 	questions: [],
 	startedAt: 0,
 	pausedAt: 0,
@@ -51,6 +85,7 @@ const elements = {
 	title: document.getElementById("exerciseTitle"),
 	desc: document.getElementById("exerciseDesc"),
 	startBtn: document.getElementById("startBtn"),
+	gamePageBtn: document.getElementById("gamePageBtn"),
 	recordPageBtn: document.getElementById("recordPageBtn"),
 	scoreBtn: document.getElementById("scoreBtn"),
 	metaRow: document.getElementById("metaRow"),
@@ -70,6 +105,17 @@ const elements = {
 	scoreSummary: document.getElementById("scoreSummary"),
 	scoreDetail: document.getElementById("scoreDetail"),
 	answerList: document.getElementById("answerList"),
+	gameResult: document.getElementById("gameResult"),
+	gameResultTitle: document.getElementById("gameResultTitle"),
+	gameResultText: document.getElementById("gameResultText"),
+	gameResultPrimaryBtn: document.getElementById("gameResultPrimaryBtn"),
+	gameMapBtn: document.getElementById("gameMapBtn"),
+	gamePanel: document.getElementById("gamePanel"),
+	gameProgressText: document.getElementById("gameProgressText"),
+	gameStarText: document.getElementById("gameStarText"),
+	gameProgressBar: document.getElementById("gameProgressBar"),
+	gameStageList: document.getElementById("gameStageList"),
+	resetGameBtn: document.getElementById("resetGameBtn"),
 	recordPanel: document.getElementById("recordPanel"),
 	recordCountText: document.getElementById("recordCountText"),
 	recordTotalTimeText: document.getElementById("recordTotalTimeText"),
@@ -84,6 +130,7 @@ init();
 function init() {
 	renderMenus();
 	renderRecordFilters();
+	renderGameMap();
 	selectExercise(state.current.id);
 	bindEvents();
 }
@@ -97,13 +144,30 @@ function bindEvents() {
 		if (!event.target.closest(".menu")) closeMenus();
 	});
 	document.addEventListener("keydown", (event) => {
+		if (event.repeat) return;
 		if (event.key === "F12") {
 			event.preventDefault();
+			if (!elements.gamePanel.hidden) {
+				startRecommendedGameStage();
+				return;
+			}
+			if (!elements.recordPanel.hidden) return;
 			restartCurrentExercise();
 			return;
 		}
-		if (event.key !== " ") return;
+		if (!isSpaceKey(event)) return;
+		if (state.mode === "game" && state.submitted && !elements.scorePanel.hidden) {
+			event.preventDefault();
+			handleGameResultPrimaryAction();
+			return;
+		}
 		if (isEditableTarget(event.target)) return;
+		if (!elements.gamePanel.hidden) {
+			event.preventDefault();
+			startRecommendedGameStage();
+			return;
+		}
+		if (!elements.recordPanel.hidden) return;
 		if (canStartNewExercise()) {
 			event.preventDefault();
 			startExercise();
@@ -136,6 +200,10 @@ function bindEvents() {
 	elements.scoreBtn.addEventListener("click", () => {
 		elements.scorePanel.hidden = !elements.scorePanel.hidden;
 	});
+	elements.gamePageBtn.addEventListener("click", showGamePage);
+	elements.gameMapBtn.addEventListener("click", showGamePage);
+	elements.gameResultPrimaryBtn.addEventListener("click", handleGameResultPrimaryAction);
+	elements.resetGameBtn.addEventListener("click", resetGameProgress);
 	elements.recordPageBtn.addEventListener("click", showRecordPage);
 	elements.recordTypeFilter.addEventListener("change", renderHistory);
 	elements.exportRecordBtn.addEventListener("click", exportHistoryCsv);
@@ -194,7 +262,12 @@ function renderMenus() {
 }
 
 function renderRecordFilters() {
-	const titles = [...new Set(Object.values(exerciseGroups).flat().map((item) => item.title))];
+	const history = readHistory();
+	const titles = [...new Set([
+		...Object.values(exerciseGroups).flat().map((item) => item.title),
+		...gameStages.map(getGameRecordTitle),
+		...history.map(getHistoryDisplayTitle).filter(Boolean)
+	])];
 	elements.recordTypeFilter.innerHTML = '<option value="">全部题型</option>';
 	titles.forEach((title) => {
 		const option = document.createElement("option");
@@ -225,6 +298,8 @@ function selectExercise(id) {
 	showExercisePage();
 
 	state.current = item;
+	state.mode = "practice";
+	state.gameStageId = null;
 	state.questions = [];
 	state.submitted = false;
 	clearInterval(state.timerId);
@@ -237,6 +312,7 @@ function selectExercise(id) {
 	if (elements.inlineResult) elements.inlineResult.hidden = true;
 	elements.scoreBtn.hidden = true;
 	elements.scorePanel.hidden = true;
+	elements.gameResult.hidden = true;
 	if (elements.confirmMask) elements.confirmMask.hidden = true;
 	elements.startBtn.textContent = "开始练习";
 
@@ -254,7 +330,9 @@ function selectExercise(id) {
 function showExercisePage() {
 	elements.exerciseToolbar.hidden = false;
 	elements.form.hidden = false;
+	elements.gamePanel.hidden = true;
 	elements.recordPanel.hidden = true;
+	elements.gamePageBtn.classList.remove("active");
 	elements.recordPageBtn.classList.remove("active");
 }
 
@@ -266,10 +344,207 @@ function showRecordPage() {
 	if (elements.submitBar) elements.submitBar.hidden = true;
 	elements.scorePanel.hidden = true;
 	elements.scoreBtn.hidden = true;
+	elements.gamePanel.hidden = true;
 	elements.recordPanel.hidden = false;
 	document.querySelectorAll(".menu-trigger").forEach((trigger) => trigger.classList.remove("active"));
 	elements.recordPageBtn.classList.add("active");
+	renderRecordFilters();
 	renderHistory();
+}
+
+function showGamePage() {
+	if (state.questions.length && !state.submitted && !window.confirm("当前练习尚未结束，返回关卡地图将放弃本次练习，是否继续？")) return;
+	abandonCurrentExercise();
+	closeMenus();
+	elements.exerciseToolbar.hidden = true;
+	elements.metaRow.hidden = true;
+	elements.form.hidden = true;
+	if (elements.submitBar) elements.submitBar.hidden = true;
+	elements.scorePanel.hidden = true;
+	elements.scoreBtn.hidden = true;
+	elements.recordPanel.hidden = true;
+	elements.gamePanel.hidden = false;
+	document.querySelectorAll(".menu-trigger").forEach((trigger) => trigger.classList.remove("active"));
+	elements.gamePageBtn.classList.add("active");
+	renderGameMap();
+}
+
+function abandonCurrentExercise() {
+	clearInterval(state.timerId);
+	state.timerId = null;
+	state.questions = [];
+	state.submitted = false;
+	state.pausedAt = 0;
+	state.activeQuestionIndex = null;
+	state.activeQuestionStartedAt = 0;
+	if (elements.confirmMask) elements.confirmMask.hidden = true;
+}
+
+function renderGameMap() {
+	const progress = readGameProgress();
+	const completed = gameStages.filter((stage) => progress.stages[stage.id]?.passed).length;
+	const stars = gameStages.reduce((total, stage) => total + Number(progress.stages[stage.id]?.bestStars || 0), 0);
+	elements.gameProgressText.textContent = `${completed} / ${gameStages.length}`;
+	elements.gameStarText.textContent = `${stars} / ${gameStages.length * 3}`;
+	elements.gameProgressBar.style.width = `${completed / gameStages.length * 100}%`;
+	elements.gameStageList.innerHTML = "";
+
+	gameStages.forEach((stage) => {
+		const rules = getGameStageRules(stage);
+		const stageProgress = progress.stages[stage.id] || {};
+		const unlocked = stage.number <= progress.unlockedStage;
+		const status = stageProgress.passed ? "已通关" : unlocked ? "待挑战" : "未解锁";
+		const row = document.createElement("article");
+		row.className = `game-stage ${unlocked ? "" : "locked"} ${stageProgress.passed ? "passed" : ""}`;
+		row.innerHTML = `
+			<div class="game-stage-number">${stageProgress.passed ? "✓" : stage.number}</div>
+			<div class="game-stage-main">
+				<div class="game-stage-title-row">
+					<strong>第 ${stage.number} 关 · ${escapeHtml(stage.title)}</strong>
+					<span class="difficulty-badge difficulty-${getDifficultyClass(stage.difficulty)}">${escapeHtml(stage.difficulty)}</span>
+					<span class="game-stage-status">${status}</span>
+				</div>
+				<p>${escapeHtml(getGameStageDescription(stage))}</p>
+				<div class="game-stage-stats">
+					<span>${escapeHtml(getGamePassText(rules))}</span>
+					<span>${escapeHtml(getGameRatingText(rules))}</span>
+					${stageProgress.attempts ? `<span>挑战 ${stageProgress.attempts} 次</span>` : ""}
+					${stageProgress.bestAccuracy !== undefined ? `<span>最佳 ${stageProgress.bestAccuracy}%</span>` : ""}
+				</div>
+			</div>
+			<div class="game-stage-action">
+				<div class="game-stars" aria-label="${stageProgress.bestStars || 0} 星">${renderStars(stageProgress.bestStars || 0)}</div>
+				<button class="${stageProgress.passed ? "ghost-button" : "start-button"}" type="button" ${unlocked ? "" : "disabled"}>
+					${stageProgress.passed ? "再次挑战" : unlocked ? "开始闯关" : "尚未解锁"}
+				</button>
+			</div>
+		`;
+		const button = row.querySelector("button");
+		if (unlocked) {
+			button.title = stageProgress.passed ? "再次挑战（F12）" : "开始闯关（空格）";
+			button.addEventListener("click", () => startGameStage(stage.id));
+		}
+		elements.gameStageList.appendChild(row);
+	});
+}
+
+function getGameStageDescription(stage) {
+	if (stage.generator) return "基础口算与资料分析混合出题，考查切换速度和稳定性。";
+	const source = findExerciseById(stage.exerciseId);
+	return `${source?.title || stage.title}，每次 ${source?.count || stage.count} 题。`;
+}
+
+function getDifficultyClass(difficulty) {
+	return {
+		"入门": "starter",
+		"基础": "basic",
+		"进阶": "advanced",
+		"挑战": "challenge",
+		"资料": "data",
+		"终局": "final"
+	}[difficulty] || "basic";
+}
+
+function getGameStageRules(stage) {
+	const source = findExerciseById(stage.exerciseId);
+	const getSeconds = (label) => source?.timeLevels?.find((level) => level.label === label)?.seconds;
+	return {
+		count: stage.count || source?.count || 10,
+		passAccuracy: stage.passAccuracy || 100,
+		passSeconds: stage.passSeconds || getSeconds("合格") || null,
+		goodSeconds: stage.goodSeconds || getSeconds("良好") || null,
+		excellentSeconds: stage.excellentSeconds || getSeconds("优秀") || null
+	};
+}
+
+function getGamePassText(rules) {
+	return rules.passSeconds
+		? `通关：${rules.count} 题全对且 ≤ ${rules.passSeconds}s`
+		: `通关：${rules.count} 题全对，不限时`;
+}
+
+function getGameRatingText(rules) {
+	return rules.excellentSeconds
+		? `评级：合格 ${rules.passSeconds}s / 良好 ${rules.goodSeconds}s / 优秀 ${rules.excellentSeconds}s`
+		: "评级：全对即通关";
+}
+
+function renderStars(count) {
+	return Array.from({ length: 3 }, (_, index) => `<span class="${index < count ? "earned" : ""}">★</span>`).join("");
+}
+
+function startGameStage(stageId) {
+	const stage = gameStages.find((item) => item.id === stageId);
+	const progress = readGameProgress();
+	if (!stage || stage.number > progress.unlockedStage) return;
+	const source = findExerciseById(stage.exerciseId);
+	const rules = getGameStageRules(stage);
+	state.current = {
+		id: `game-${stage.id}`,
+		title: `第 ${stage.number} 关 · ${stage.title}`,
+		desc: `${getGameStageDescription(stage)} ${getGamePassText(rules)}。${getGameRatingText(rules)}。`,
+		count: rules.count,
+		generator: stage.generator || source.generator
+	};
+	state.mode = "game";
+	state.gameStageId = stage.id;
+	showExercisePage();
+	document.querySelectorAll(".menu-trigger").forEach((trigger) => trigger.classList.remove("active"));
+	elements.gamePageBtn.classList.add("active");
+	elements.title.textContent = state.current.title;
+	elements.desc.textContent = state.current.desc;
+	elements.gameResult.hidden = true;
+	startExercise();
+}
+
+function startRecommendedGameStage() {
+	const progress = readGameProgress();
+	const stage = gameStages.find((item) => item.number <= progress.unlockedStage && !progress.stages[item.id]?.passed)
+		|| gameStages[Math.max(0, progress.unlockedStage - 1)]
+		|| gameStages[0];
+	startGameStage(stage.id);
+}
+
+function handleGameResultPrimaryAction() {
+	const stage = gameStages.find((item) => item.id === state.gameStageId);
+	if (!stage) return;
+	const nextStage = gameStages[stage.number];
+	const progress = readGameProgress();
+	if (progress.stages[stage.id]?.lastPassed && nextStage) {
+		startGameStage(nextStage.id);
+		return;
+	}
+	startGameStage(stage.id);
+}
+
+function resetGameProgress() {
+	if (!window.confirm("确定要重置全部闯关进度吗？闯关做题记录不会被删除。")) return;
+	localStorage.removeItem(GAME_PROGRESS_KEY);
+	renderGameMap();
+}
+
+function findExerciseById(id) {
+	return Object.values(exerciseGroups).flat().find((exercise) => exercise.id === id);
+}
+
+function readGameProgress() {
+	let saved = {};
+	try {
+		saved = JSON.parse(localStorage.getItem(GAME_PROGRESS_KEY) || "{}");
+	} catch (error) {
+		saved = {};
+	}
+	if (saved.version !== GAME_PROGRESS_VERSION) saved = {};
+	return {
+		version: GAME_PROGRESS_VERSION,
+		unlockedStage: Math.min(gameStages.length, Math.max(1, Number(saved.unlockedStage) || 1)),
+		stages: saved.stages && typeof saved.stages === "object" ? saved.stages : {}
+	};
+}
+
+function saveGameProgress(progress) {
+	progress.version = GAME_PROGRESS_VERSION;
+	localStorage.setItem(GAME_PROGRESS_KEY, JSON.stringify(progress));
 }
 
 function canStartNewExercise() {
@@ -278,6 +553,10 @@ function canStartNewExercise() {
 
 function isEditableTarget(target) {
 	return target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
+}
+
+function isSpaceKey(event) {
+	return event.key === " " || event.key === "Spacebar" || event.code === "Space";
 }
 
 function restartCurrentExercise() {
@@ -310,6 +589,7 @@ function startExercise() {
 	state.submitted = false;
 
 	elements.scorePanel.hidden = true;
+	elements.gameResult.hidden = true;
 	elements.scoreBtn.hidden = true;
 	if (elements.submitBar) elements.submitBar.hidden = false;
 	if (elements.submitHint) elements.submitHint.textContent = "填写完成后点击校验。";
@@ -516,12 +796,17 @@ function submitAnswers() {
 	if (elements.submitBtn) elements.submitBtn.disabled = true;
 	elements.startBtn.textContent = "重新开始";
 	const timeGrade = getTimeGrade(state.current, elapsed, correct, state.questions.length);
-	const gradeText = timeGrade.replace(/^评级：/, "");
+	const gameResult = state.mode === "game"
+		? evaluateGameResult(correct, state.questions.length, elapsed)
+		: null;
+	const gradeText = getRecordGradeText(elapsed, correct, state.questions.length, timeGrade);
 	elements.scoreSummary.textContent = `${correct} / ${state.questions.length}`;
 	elements.scoreDetail.textContent = `正确率 ${accuracy}%，用时 ${formatTime(elapsed)}，平均 ${formatAverage(elapsed, state.questions.length)} 秒/题${timeGrade ? `，${timeGrade}` : ""}。`;
 	renderAnswers(answers);
+	if (gameResult) renderGameResult(gameResult);
 	try {
 		saveHistory(correct, elapsed, accuracy, gradeText, answers);
+		renderRecordFilters();
 		renderHistory();
 	} catch (error) {
 		console.warn("保存练习记录失败：", error);
@@ -531,6 +816,64 @@ function submitAnswers() {
 	} catch (error) {
 		elements.scorePanel.scrollIntoView();
 	}
+}
+
+function getRecordGradeText(elapsed, correct, total, currentTimeGrade) {
+	if (state.mode !== "game") return currentTimeGrade.replace(/^评级：/, "");
+	const stage = gameStages.find((item) => item.id === state.gameStageId);
+	const source = findExerciseById(stage?.exerciseId);
+	return source ? getTimeGrade(source, elapsed, correct, total).replace(/^评级：/, "") : "";
+}
+
+function evaluateGameResult(correct, total, elapsed) {
+	const stage = gameStages.find((item) => item.id === state.gameStageId);
+	if (!stage) return null;
+	const rules = getGameStageRules(stage);
+	const accuracy = Math.round(correct / total * 100);
+	const allCorrect = correct === total;
+	const withinPassTime = !rules.passSeconds || elapsed <= rules.passSeconds;
+	const passed = allCorrect && withinPassTime;
+	let stars = passed ? 1 : 0;
+	if (passed && rules.goodSeconds && elapsed <= rules.goodSeconds) stars = 2;
+	if (passed && rules.excellentSeconds && elapsed <= rules.excellentSeconds) stars = 3;
+	if (passed && !rules.passSeconds) stars = 1;
+
+	const progress = readGameProgress();
+	const previous = progress.stages[stage.id] || {};
+	progress.stages[stage.id] = {
+		attempts: Number(previous.attempts || 0) + 1,
+		passed: Boolean(previous.passed || passed),
+		lastPassed: passed,
+		bestStars: Math.max(Number(previous.bestStars || 0), stars),
+		bestAccuracy: Math.max(Number(previous.bestAccuracy || 0), accuracy),
+		bestTime: previous.bestTime === undefined ? elapsed : Math.min(Number(previous.bestTime), elapsed),
+		completedAt: passed ? new Date().toISOString() : previous.completedAt || ""
+	};
+	if (passed) progress.unlockedStage = Math.min(gameStages.length, Math.max(progress.unlockedStage, stage.number + 1));
+	saveGameProgress(progress);
+
+	return { stage, rules, accuracy, passed, stars, elapsed, allCorrect, withinPassTime, isFinal: stage.number === gameStages.length };
+}
+
+function renderGameResult(result) {
+	const { stage, rules, passed, stars, elapsed, allCorrect, withinPassTime, isFinal } = result;
+	elements.gameResult.hidden = false;
+	elements.gameResult.classList.toggle("passed", passed);
+	elements.gameResult.classList.toggle("failed", !passed);
+	elements.gameResultTitle.textContent = passed
+		? isFinal ? "综合试炼完成" : `第 ${stage.number} 关通关`
+		: `第 ${stage.number} 关未通过`;
+	elements.gameResultText.textContent = passed
+		? `获得 ${stars} 星，用时 ${formatTime(elapsed)}。${isFinal ? "全部关卡已完成，可以继续挑战三星。" : "下一关已解锁。"}`
+		: !allCorrect
+			? `本关要求 ${rules.count} 题全对，本次为 ${result.accuracy}%，不能解锁下一关。`
+			: !withinPassTime
+				? `答案全部正确，但用时 ${formatTime(elapsed)}，超过合格要求 ${rules.passSeconds}s。`
+				: "本次未达到通关要求。";
+	elements.gameResultPrimaryBtn.textContent = passed && !isFinal ? "进入下一关" : "再试一次";
+	elements.gameResultPrimaryBtn.title = passed && !isFinal ? "进入下一关（空格）" : "再试一次（空格或 F12）";
+	elements.startBtn.title = "重新挑战当前关（F12）";
+	elements.gameResultPrimaryBtn.focus();
 }
 
 window.submitAnswers = submitAnswers;
@@ -611,10 +954,13 @@ function getElapsedSeconds() {
 
 function saveHistory(correct, elapsed, accuracy, gradeText, answers) {
 	const key = "xingceAssistantHistory";
-	const history = JSON.parse(localStorage.getItem(key) || "[]");
+	const history = readHistory();
+	const stage = gameStages.find((item) => item.id === state.gameStageId);
 	history.unshift({
 		id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-		title: state.current.title,
+		title: state.mode === "game" && stage ? getGameRecordTitle(stage) : state.current.title,
+		mode: state.mode,
+		stageId: stage?.id || "",
 		correct,
 		total: state.questions.length,
 		accuracy,
@@ -624,6 +970,27 @@ function saveHistory(correct, elapsed, accuracy, gradeText, answers) {
 		time: new Date().toISOString()
 	});
 	localStorage.setItem(key, JSON.stringify(history));
+}
+
+function readHistory() {
+	try {
+		const history = JSON.parse(localStorage.getItem("xingceAssistantHistory") || "[]");
+		return Array.isArray(history) ? history : [];
+	} catch (error) {
+		return [];
+	}
+}
+
+function getGameRecordTitle(stage) {
+	return findExerciseById(stage.exerciseId)?.title || stage.title;
+}
+
+function getHistoryDisplayTitle(item) {
+	if (item.stageId) {
+		const stage = gameStages.find((candidate) => candidate.id === item.stageId);
+		if (stage) return getGameRecordTitle(stage);
+	}
+	return item.title || "";
 }
 
 function buildQuestionReport(answers) {
@@ -655,14 +1022,14 @@ function renderHistory() {
 	}
 	visibleHistory.forEach((item, recordIndex) => {
 		const recordId = item.id || item.time;
-		const grade = item.grade || "";
+		const grade = getHistoryDisplayGrade(item);
 		const gradeBadge = grade ? `<span class="grade-badge ${getGradeBadgeClass(grade)}">${escapeHtml(grade)}</span>` : "";
 		const record = document.createElement("article");
 		record.className = "record-card";
 		record.innerHTML = `
 			<div class="record-item">
 				<span class="record-index">第 ${visibleHistory.length - recordIndex} 次${gradeBadge}</span>
-				<strong>${escapeHtml(item.title)}</strong>
+				<strong>${escapeHtml(getHistoryDisplayTitle(item))}</strong>
 				<span>做题时间：${escapeHtml(formatDateTime(item.time))}</span>
 				<span>${item.correct} / ${item.total}，正确率 ${item.accuracy}%</span>
 				<span>用时 ${escapeHtml(formatTime(item.elapsed))}</span>
@@ -695,9 +1062,9 @@ function getTotalRecordSeconds(history) {
 }
 
 function getVisibleHistory() {
-	const history = JSON.parse(localStorage.getItem("xingceAssistantHistory") || "[]");
+	const history = readHistory();
 	const filter = elements.recordTypeFilter.value;
-	return filter ? history.filter((item) => item.title === filter) : history;
+	return filter ? history.filter((item) => getHistoryDisplayTitle(item) === filter) : history;
 }
 
 function exportHistoryCsv() {
@@ -705,7 +1072,7 @@ function exportHistoryCsv() {
 	if (!visibleHistory.length) return;
 	const maxQuestionCount = Math.max(0, ...visibleHistory.map((item) => item.questions?.length || 0));
 	const rows = visibleHistory.map((item) => [
-		item.title,
+		getHistoryDisplayTitle(item),
 		formatDateTime(item.time),
 		formatTime(item.elapsed),
 		formatRecordStatus(item),
@@ -747,7 +1114,15 @@ function formatRecordStatus(item) {
 }
 
 function formatRecordGrade(item) {
-	return (item.grade || "").replace(/^评级：/, "").replace("未达标（需全对）", "未达标");
+	return getHistoryDisplayGrade(item).replace(/^评级：/, "").replace("未达标（需全对）", "未达标");
+}
+
+function getHistoryDisplayGrade(item) {
+	const grade = item.grade || "";
+	if (!item.stageId || !["通关", "未通关"].includes(grade)) return grade;
+	const stage = gameStages.find((candidate) => candidate.id === item.stageId);
+	const source = findExerciseById(stage?.exerciseId);
+	return source ? getTimeGrade(source, Number(item.elapsed || 0), Number(item.correct || 0), Number(item.total || 0)).replace(/^评级：/, "") : "";
 }
 
 function escapeCsvCell(value) {
@@ -786,10 +1161,25 @@ function renderRecordReport(container, questions) {
 }
 
 function getGradeBadgeClass(grade) {
+	if (grade.includes("通关") && !grade.includes("未通关")) return "is-pass";
 	if (grade.includes("优秀")) return "is-excellent";
 	if (grade.includes("良好")) return "is-good";
 	if (grade.includes("合格")) return "is-pass";
 	return "is-fail";
+}
+
+function gameMixedQuestion(index = 0) {
+	const generators = [
+		threeDigitAddSub,
+		() => arithmetic(10, 99, 2, 9, "×"),
+		division(100, 999, 2, 9),
+		percentQuestion,
+		baseCompare,
+		growthAmount,
+		fractionCompare,
+		mixedAddSub
+	];
+	return generators[index % generators.length]();
 }
 
 function arithmetic(aMin, aMax, bMin, bMax, op) {
